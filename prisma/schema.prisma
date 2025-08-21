@@ -1,0 +1,95 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  password      String
+  phone         String?
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  teams         Team[]
+  transactions  Transaction[]
+  leagueEntries LeagueEntry[]
+}
+
+// Team model
+model Team {
+  id            String    @id @default(uuid())
+  name          String
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  players       Json      // Store player array as JSON
+  captain       Int?
+  viceCaptain   Int?
+  budget        Float     @default(100)
+  totalCost     Float     @default(0)
+  gameweek      Int       @default(1)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  leagueEntries LeagueEntry[]
+}
+
+// League model
+model League {
+  id            String    @id @default(uuid())
+  name          String
+  type          String    @default("classic") // classic, h2h
+  entryFee      Float     @default(0)
+  maxTeams      Int       @default(100)
+  prizePool     Float     @default(0)
+  gameweek      Int       @default(1)
+  status        String    @default("open") // open, in-progress, completed
+  createdBy     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  entries       LeagueEntry[]
+  transactions  Transaction[]
+}
+
+// League Entry (Team in League)
+model LeagueEntry {
+  id            String    @id @default(uuid())
+  leagueId      String
+  league        League    @relation(fields: [leagueId], references: [id])
+  teamId        String
+  team          Team      @relation(fields: [teamId], references: [id])
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  points        Int       @default(0)
+  rank          Int       @default(0)
+  joinedAt      DateTime  @default(now())
+  
+  @@unique([leagueId, teamId])
+}
+
+// Transaction model (for payments)
+model Transaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  leagueId      String?
+  league        League?   @relation(fields: [leagueId], references: [id])
+  type          String    // entry_fee, prize, withdrawal
+  amount        Float
+  status        String    @default("pending") // pending, completed, failed
+  reference     String    @unique
+  paymentMethod String?   // mtn, vodafone, card
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
